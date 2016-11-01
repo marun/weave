@@ -78,12 +78,11 @@ func (c *claim) Try(alloc *Allocator) bool {
 		return false
 	}
 
-	if c.ident == api.NoContainerID {
-		c.ident = c.cidr.Addr.String()
-	}
 	// We are the owner, check we haven't given it to another container
-	switch existingIdent := alloc.findOwner(c.cidr.Addr); existingIdent {
-	case "":
+	existingIdent := alloc.findOwner(c.cidr.Addr)
+	switch {
+	case existingIdent == "":
+		// Unused address, we try to claim it:
 		if err := alloc.space.Claim(c.cidr.Addr); err == nil {
 			alloc.debugln("Claimed", c.cidr, "for", c.ident)
 			alloc.addOwned(c.ident, c.cidr, c.isContainer)
@@ -91,15 +90,20 @@ func (c *claim) Try(alloc *Allocator) bool {
 		} else {
 			c.sendResult(err)
 		}
-	case c.ident:
-		// same identifier is claiming same address; that's OK
-		alloc.debugln("Re-Claimed", c.cidr, "for", c.ident)
+	case (existingIdent == c.ident) || (c.ident == api.NoContainerID && existingIdent == c.cidr.Addr.String()):
+		// Same identifier is claiming same address, which is OK:
+		alloc.debugln("Re-claimed", c.cidr, "for", c.ident)
 		c.sendResult(nil)
-	case c.cidr.Addr.String():
-		// Address already allocated via api.NoContainerID name
+	case existingIdent == c.cidr.Addr.String():
+		// Address already allocated to api.NoContainerID and current ID is a real container ID:
 		c.sendResult(fmt.Errorf("address %s already in use", c.cidr))
+	case c.ident == api.NoContainerID:
+		// We do not know whether this is the same container or another one,
+		// but we also cannot prove otherwise, so we let it reclaim the address:
+		alloc.debugln("Re-claimed", c.cidr, "for ID", c.ident, "having existing ID as", existingIdent)
+		c.sendResult(nil)
 	default:
-		// Addr already owned by container on this machine
+		// Address already owned by another container on this machine:
 		c.sendResult(fmt.Errorf("address %s is already owned by %s", c.cidr.String(), existingIdent))
 	}
 	return true
