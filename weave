@@ -1277,10 +1277,16 @@ check_overlap() {
 # with_container_addresses.
 ipam_reclaim() {
     CONTAINER_ID="$1"
-    # The weave IP addresses of containers attached by the plugin are
-    # recorded specially in IPAM, since the container id is not know
-    # at the time.
+
+    # Weave keeps track of which container has which IP in its IPAM.
+    # If the container's network interface is not the same as Weave's
+    # then it is likely the container was not started by Weave.
+    # In this case, we treat it like containers for which the Docker 
+    # plugin API does not make the container ID available yet, i.e.: 
+    # we use "_" as the container ID instead, and we let the Weave 
+    # server decide what is most appropriate for the reclaim.
     [ "$2" = "$CONTAINER_IFNAME" ] || CONTAINER_ID="_"
+
     for CIDR in $4 ; do
         http_call $HTTP_ADDR PUT "/ip/$CONTAINER_ID/$CIDR?noErrorOnUnknown=true&?check-alive=true" || true
     done
