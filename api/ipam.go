@@ -5,6 +5,11 @@ import (
 	"net"
 )
 
+// Special "I don't have a unique ID" container identifier, used in various cases:
+// - when the Docker plugin API does not make the container ID available at the point Weave needs it,
+// - when reclaiming an IP for a container using a different network interface.
+const NoContainerID string = "_"
+
 func (client *Client) ipamOp(ID string, op string) (*net.IPNet, error) {
 	ip, err := client.httpVerb(op, fmt.Sprintf("/ip/%s", ID), nil)
 	if err != nil {

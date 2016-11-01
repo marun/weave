@@ -5,6 +5,7 @@ import (
 
 	"github.com/weaveworks/mesh"
 
+	"github.com/weaveworks/weave/api"
 	"github.com/weaveworks/weave/common"
 	"github.com/weaveworks/weave/net/address"
 )
@@ -77,7 +78,7 @@ func (c *claim) Try(alloc *Allocator) bool {
 		return false
 	}
 
-	if c.ident == "_" { // Special "I don't have a unique ID" identifier
+	if c.ident == api.NoContainerID {
 		c.ident = c.cidr.Addr.String()
 	}
 	// We are the owner, check we haven't given it to another container
@@ -95,7 +96,7 @@ func (c *claim) Try(alloc *Allocator) bool {
 		alloc.debugln("Re-Claimed", c.cidr, "for", c.ident)
 		c.sendResult(nil)
 	case c.cidr.Addr.String():
-		// Address already allocated via "_" name
+		// Address already allocated via api.NoContainerID name
 		c.sendResult(fmt.Errorf("address %s already in use", c.cidr))
 	default:
 		// Addr already owned by container on this machine
