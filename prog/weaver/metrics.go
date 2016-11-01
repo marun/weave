@@ -46,15 +46,13 @@ func uint64Counter(desc *prometheus.Desc, val uint64, labels ...string) promethe
 var metrics []metric = []metric{
 	{desc("weave_connections", "Number of peer-to-peer connections.", "state"),
 		func(s WeaveStatus, desc *prometheus.Desc, ch chan<- prometheus.Metric) {
-			established := 0
+			counts := make(map[string]int)
 			for _, conn := range s.Router.Connections {
-				if conn.State == "established" {
-					established++
-				}
+				counts[conn.State]++
 			}
-
-			ch <- intGauge(desc, len(s.Router.Connections)-established, "non-established")
-			ch <- intGauge(desc, established, "established")
+			for _, state := range allConnectionStates {
+				ch <- intGauge(desc, counts[state], state)
+			}
 		}},
 	{desc("weave_connection_terminations_total", "Number of peer-to-peer connections terminated."),
 		func(s WeaveStatus, desc *prometheus.Desc, ch chan<- prometheus.Metric) {
